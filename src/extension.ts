@@ -2,10 +2,68 @@ import * as vscode from 'vscode';
 import { DelphiMapParser } from './mapParser';
 
 export function activate(context: vscode.ExtensionContext) {
-
-	const mapFilename = "C:\\Apps\\Inca\\Bin\\p1.map";
 	const output = vscode.window.createOutputChannel("Delphi Debug");
 	context.subscriptions.push(output);
+	const selectedMapKey = 'delphi-debug.selectedMapFile';
+
+	const selectMapFile = async (allowSaved: boolean = true): Promise<string | undefined> => {
+		if (allowSaved) {
+			const savedMap = context.workspaceState.get<string>(selectedMapKey);
+			if (savedMap) {
+				return savedMap;
+			}
+		}
+
+		const mapFiles = await vscode.workspace.findFiles('**/*.map');
+		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		const items: vscode.QuickPickItem[] = mapFiles.map(file => ({
+			label: vscode.workspace.asRelativePath(file, false),
+			description: file.fsPath
+		}));
+
+		items.push({
+			label: '$(folder-opened) Browse for a .map file...',
+			description: workspaceFolder?.uri.fsPath
+		});
+
+		const selected = await vscode.window.showQuickPick(items, {
+			title: 'Select Delphi MAP file',
+			placeHolder: 'Choose a .map file'
+		});
+		if (!selected) {
+			return undefined;
+		}
+
+		if (selected.label === '$(folder-opened) Browse for a .map file...') {
+			const selectedFiles = await vscode.window.showOpenDialog({
+				canSelectMany: false,
+				filters: {
+					'Delphi MAP files': ['map'],
+					'All files': ['*']
+				},
+				title: 'Select Delphi MAP file'
+			});
+			const selectedFile = selectedFiles?.[0]?.fsPath;
+			if (selectedFile) {
+				await context.workspaceState.update(selectedMapKey, selectedFile);
+			}
+			return selectedFile;
+		}
+
+		const selectedFile = selected.description;
+		if (selectedFile) {
+			await context.workspaceState.update(selectedMapKey, selectedFile);
+		}
+		return selectedFile;
+	};
+
+	const selectMap =
+		vscode.commands.registerCommand(
+			'delphi-debug.selectMapFile',
+			async () => {
+				await selectMapFile(false);
+			}
+		);
 
 	const delphiDebug =
 		vscode.commands.registerCommand(
@@ -34,6 +92,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 					output.appendLine(`Active path: ${editor.document.uri.fsPath}`);
 					output.appendLine(`File: ${fileName}, line: ${line}`);
+
+					const mapFilename = await selectMapFile();
+					if (!mapFilename) {
+						return;
+					}
 					output.appendLine(`Loading MAP: ${mapFilename}`);
 
 					const parser =
@@ -88,6 +151,10 @@ export function activate(context: vscode.ExtensionContext) {
 					const sourceLine = editor.document.lineAt(line - 1).text;
 
 					output.appendLine(`Current line: ${fileName}:${line}`);
+					const mapFilename = await selectMapFile();
+					if (!mapFilename) {
+						return;
+					}
 					output.appendLine(`Loading MAP: ${mapFilename}`);
 
 					const parser = new DelphiMapParser();
@@ -116,7 +183,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		);
 
-	context.subscriptions.push(delphiDebug, currentLineInfo);
+	context.subscriptions.push(delphiDebug, currentLineInfo, selectMap);
 }
 
 export function deactivate() { }
