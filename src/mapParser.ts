@@ -22,12 +22,16 @@ export class DelphiMapParser {
 
 	private sourceLookup = new Map<string, number>();
 	private sourceLines = new Map<string, number[]>();
+	private lineLookup = new Map<number, LineMapping>();
+	private sortedLineAddresses: number[] = [];
 	private symbolLookup = new Map<number, string>();
 	private sortedSymbolAddresses: number[] = [];
 
 	async load(filename: string): Promise<void> {
 		this.sourceLookup.clear();
 		this.sourceLines.clear();
+		this.lineLookup.clear();
+		this.sortedLineAddresses = [];
 		this.symbolLookup.clear();
 		this.sortedSymbolAddresses = [];
 
@@ -81,6 +85,8 @@ export class DelphiMapParser {
 
 		this.sortedSymbolAddresses = Array.from(this.symbolLookup.keys())
 			.sort((left, right) => left - right);
+		this.sortedLineAddresses = Array.from(this.lineLookup.keys())
+			.sort((left, right) => left - right);
 
 		const linesByFile = new Map<string, number[]>();
 		for (const key of this.sourceLookup.keys()) {
@@ -124,7 +130,43 @@ export class DelphiMapParser {
 			if (!this.sourceLookup.has(sourceKey)) {
 				this.sourceLookup.set(sourceKey, address);
 			}
+			if (!this.lineLookup.has(address)) {
+				this.lineLookup.set(address, {
+					file,
+					line: sourceLine,
+					address
+				});
+			}
 		}
+	}
+
+	public findLineByAddress(
+		address: number
+	): LineMapping | undefined {
+		const exactLine = this.lineLookup.get(address);
+		if (exactLine !== undefined) {
+			return exactLine;
+		}
+
+		let low = 0;
+		let high = this.sortedLineAddresses.length - 1;
+		let nearestAddress: number | undefined;
+
+		while (low <= high) {
+			const middle = Math.floor((low + high) / 2);
+			const mappedAddress = this.sortedLineAddresses[middle];
+
+			if (mappedAddress <= address) {
+				nearestAddress = mappedAddress;
+				low = middle + 1;
+			} else {
+				high = middle - 1;
+			}
+		}
+
+		return nearestAddress === undefined
+			? undefined
+			: this.lineLookup.get(nearestAddress);
 	}
 
 	public findAddress(

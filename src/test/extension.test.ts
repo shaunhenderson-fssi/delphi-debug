@@ -40,4 +40,37 @@ suite('Extension Test Suite', () => {
 			fs.unlinkSync(mapFile);
 		}
 	});
+
+	test('findLineByAddress returns the exact and nearest source line', async () => {
+		const mapFile = path.join(os.tmpdir(), `delphi-debug-${process.pid}-reverse.map`);
+		fs.writeFileSync(mapFile, [
+			'Line numbers for Unit1(Unit1.pas) segment .text',
+			'  629 0001:00FD72AC',
+			'  631 0001:00FD72B0'
+		].join('\n'));
+
+		try {
+			const parser = new DelphiMapParser();
+			await parser.load(mapFile);
+
+			assert.deepStrictEqual(
+				parser.findLineByAddress(0x00FD72AC),
+				{
+					file: 'Unit1.pas',
+					line: 629,
+					address: 0x00FD72AC
+				}
+			);
+			assert.deepStrictEqual(
+				parser.findLineByAddress(0x00FD72AF),
+				{
+					file: 'Unit1.pas',
+					line: 629,
+					address: 0x00FD72AC
+				}
+			);
+		} finally {
+			fs.unlinkSync(mapFile);
+		}
+	});
 });
