@@ -7,12 +7,12 @@ export function activate(context: vscode.ExtensionContext) {
 	const output = vscode.window.createOutputChannel("Delphi Debug");
 	context.subscriptions.push(output);
 
-	const helloWorld =
+	const delphiDebug =
 		vscode.commands.registerCommand(
-			'delphi-debug.helloWorld',
+			'delphi-debug.delphiDebug',
 			async () => {
 				try {
-					output.appendLine("Running delphi-debug.helloWorld");
+					output.appendLine("Running delphi-debug.delphiDebug");
 
 					const editor = vscode.window.activeTextEditor;
 					if (!editor) {
@@ -59,7 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showInformationMessage(message);
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
-					output.appendLine(`delphi-debug.helloWorld failed: ${message}`);
+					output.appendLine(`delphi-debug.delphiDebug failed: ${message}`);
 					vscode.window.showErrorMessage(`Delphi Debug failed: ${message}`);
 				}
 			}
@@ -116,7 +116,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		);
 
-	context.subscriptions.push(helloWorld, currentLineInfo);
+	context.subscriptions.push(delphiDebug, currentLineInfo);
 }
 
 export function deactivate() { }
