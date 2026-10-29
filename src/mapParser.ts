@@ -7,6 +7,12 @@ export interface LineMapping {
 	address: number;
 }
 
+export interface NearestAddressMapping {
+	requestedLine: number;
+	mappedLine: number;
+	address: number;
+}
+
 export interface SymbolMapping {
 	address: number;
 	symbol: string;
@@ -144,6 +150,44 @@ export class DelphiMapParser {
 		return nearestLine === undefined
 			? undefined
 			: this.sourceLookup.get(`${fileKey}:${nearestLine}`);
+	}
+
+	public findNearestAddress(
+		file: string,
+		line: number
+	): NearestAddressMapping | undefined {
+		const fileKey = file.toLowerCase();
+		const exactAddress = this.sourceLookup.get(`${fileKey}:${line}`);
+		if (exactAddress !== undefined) {
+			return {
+				requestedLine: line,
+				mappedLine: line,
+				address: exactAddress
+			};
+		}
+
+		const lines = this.sourceLines.get(fileKey) ?? [];
+		let nearestLine: number | undefined;
+		let nearestDistance = Infinity;
+
+		for (const mappedLine of lines) {
+			const distance = Math.abs(mappedLine - line);
+			if (distance < nearestDistance || (
+				distance === nearestDistance &&
+				mappedLine < line
+			)) {
+				nearestLine = mappedLine;
+				nearestDistance = distance;
+			}
+		}
+
+		return nearestLine === undefined
+			? undefined
+			: {
+				requestedLine: line,
+				mappedLine: nearestLine,
+				address: this.sourceLookup.get(`${fileKey}:${nearestLine}`)!
+			};
 	}
 
 	public findSymbolByAddress(
