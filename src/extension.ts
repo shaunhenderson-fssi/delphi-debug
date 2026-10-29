@@ -5,6 +5,10 @@ export function activate(context: vscode.ExtensionContext) {
 	const output = vscode.window.createOutputChannel("Delphi Debug");
 	context.subscriptions.push(output);
 	const selectedMapKey = 'delphi-debug.selectedMapFile';
+	let currentParser: DelphiMapParser | undefined;
+	let currentMapFile: string | undefined;
+	let loadingMapFile: string | undefined;
+	let loadingParser: Promise<DelphiMapParser> | undefined;
 
 	const selectMapFile = async (allowSaved: boolean = true): Promise<string | undefined> => {
 		if (allowSaved) {
@@ -57,6 +61,41 @@ export function activate(context: vscode.ExtensionContext) {
 		return selectedFile;
 	};
 
+	const getParser = async (): Promise<DelphiMapParser> => {
+		const mapFilename = await selectMapFile();
+
+		if (!mapFilename) {
+			throw new Error("No MAP file selected");
+		}
+
+		if (currentParser && currentMapFile === mapFilename) {
+			return currentParser;
+		}
+
+		if (loadingParser && loadingMapFile === mapFilename) {
+			return loadingParser;
+		}
+
+		if (!loadingParser || loadingMapFile !== mapFilename) {
+			const parser = new DelphiMapParser();
+			loadingParser = parser.load(mapFilename).then(() => {
+				if (loadingMapFile === mapFilename) {
+					currentParser = parser;
+					currentMapFile = mapFilename;
+				}
+				return parser;
+			}).finally(() => {
+				if (loadingMapFile === mapFilename) {
+					loadingParser = undefined;
+					loadingMapFile = undefined;
+				}
+			});
+			loadingMapFile = mapFilename;
+		}
+
+		return loadingParser;
+	};
+
 	const selectMap =
 		vscode.commands.registerCommand(
 			'delphi-debug.selectMapFile',
@@ -97,12 +136,10 @@ export function activate(context: vscode.ExtensionContext) {
 					if (!mapFilename) {
 						return;
 					}
-					output.appendLine(`Loading MAP: ${mapFilename}`);
-
-					const parser =
-						new DelphiMapParser();
-
-					await parser.load(mapFilename);
+					if (!currentParser || currentMapFile !== mapFilename) {
+						output.appendLine(`Loading MAP: ${mapFilename}`);
+					}
+					const parser = await getParser();
 
 					const address =
 						parser.findAddress(fileName, line);
@@ -155,10 +192,10 @@ export function activate(context: vscode.ExtensionContext) {
 					if (!mapFilename) {
 						return;
 					}
-					output.appendLine(`Loading MAP: ${mapFilename}`);
-
-					const parser = new DelphiMapParser();
-					await parser.load(mapFilename);
+					if (!currentParser || currentMapFile !== mapFilename) {
+						output.appendLine(`Loading MAP: ${mapFilename}`);
+					}
+					const parser = await getParser();
 
 					const address = parser.findAddress(fileName, line);
 					if (address === undefined) {
