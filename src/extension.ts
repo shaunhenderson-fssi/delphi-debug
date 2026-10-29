@@ -115,6 +115,96 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		);
 
+	const configurationProvider: vscode.DebugConfigurationProvider = {
+		resolveDebugConfiguration: async (folder, configuration) => {
+			/*
+			Example .vscode/launch.json configuration:
+			{
+				"version": "0.2.0",
+				"configurations": [
+					{
+						"type": "delphi",
+						"request": "launch",
+						"name": "Debug Delphi executable",
+						"program": "C:\\apps\\inca\\bin\\p1.exe",
+						"mapFile": "C:\\apps\\inca\\bin\\p1.map",
+						"adapter": "C:/path/to/delphi-debug-adapter.exe",
+						"stopOnEntry": true
+					}
+				]
+			}
+			*/
+
+			const resolved = { ...configuration };
+			if (!resolved.type) {
+				resolved.type = 'delphi';
+			}
+			if (!resolved.request) {
+				resolved.request = 'launch';
+			}
+			if (!resolved.name) {
+				resolved.name = 'Debug Delphi program';
+			}
+
+			if (!resolved.program) {
+				const executables = await vscode.workspace.findFiles('**/*.exe');
+				const selected = executables.length === 1
+					? executables[0]
+					: await vscode.window.showQuickPick(
+						executables.map(file => ({
+							label: vscode.workspace.asRelativePath(file, false),
+							description: file.fsPath
+						})),
+						{ placeHolder: 'Select the Delphi executable to launch' }
+					);
+				resolved.program = executables.length === 1
+					? (selected as vscode.Uri).fsPath
+					: (selected as vscode.QuickPickItem | undefined)?.description;
+			}
+
+			if (!resolved.mapFile) {
+				resolved.mapFile = await selectMapFile();
+			}
+
+			if (!resolved.program) {
+				vscode.window.showErrorMessage('Delphi Debug: select an executable in the launch configuration');
+				return undefined;
+			}
+			if (!resolved.mapFile) {
+				vscode.window.showErrorMessage('Delphi Debug: select a Delphi MAP file');
+				return undefined;
+			}
+			if (!path.isAbsolute(resolved.program)) {
+				resolved.program = path.resolve(folder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '', resolved.program);
+			}
+			if (!path.isAbsolute(resolved.mapFile)) {
+				resolved.mapFile = path.resolve(folder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '', resolved.mapFile);
+			}
+
+			output.appendLine(`Debug configuration: ${resolved.program}`);
+			output.appendLine(`MAP file: ${resolved.mapFile}`);
+			return resolved;
+		}
+	};
+
+	const adapterDescriptorFactory: vscode.DebugAdapterDescriptorFactory = {
+		createDebugAdapterDescriptor(session) {
+			const adapter = session.configuration.adapter;
+			if (typeof adapter !== 'string' || adapter.length === 0) {
+				throw new Error(
+					'No Delphi debug adapter configured. Set "adapter" in launch.json to the native debugger adapter executable.'
+				);
+			}
+
+			return new vscode.DebugAdapterExecutable(
+				adapter,
+				Array.isArray(session.configuration.adapterArgs)
+					? session.configuration.adapterArgs
+					: []
+			);
+		}
+	};
+
 	const delphiDebug =
 		vscode.commands.registerCommand(
 			'delphi-debug.delphiDebug',
@@ -302,7 +392,14 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		);
 
-	context.subscriptions.push(delphiDebug, currentLineInfo, goToRuntimeAddress, selectMap);
+	context.subscriptions.push(
+		delphiDebug,
+		currentLineInfo,
+		goToRuntimeAddress,
+		selectMap,
+		vscode.debug.registerDebugConfigurationProvider('delphi', configurationProvider),
+		vscode.debug.registerDebugAdapterDescriptorFactory('delphi', adapterDescriptorFactory)
+	);
 }
 
 export function deactivate() { }

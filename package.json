@@ -12,6 +12,64 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "breakpoints": [
+      {
+        "language": "pascal"
+      },
+      {
+        "language": "delphi"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "delphi",
+        "label": "Delphi Native Debug",
+        "languages": ["pascal", "delphi"],
+        "configurationAttributes": {
+          "launch": {
+            "required": ["program", "mapFile"],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Path to the Delphi executable"
+              },
+              "mapFile": {
+                "type": "string",
+                "description": "Path to the matching detailed Delphi MAP file"
+              },
+              "adapter": {
+                "type": "string",
+                "description": "Native debugger Debug Adapter executable"
+              },
+              "adapterArgs": {
+                "type": "array",
+                "description": "Arguments passed to the native debugger Debug Adapter",
+                "items": { "type": "string" }
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Working directory for the executable"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "delphi",
+            "request": "launch",
+            "name": "Debug Delphi program",
+            "program": "${workspaceFolder}/app.exe",
+            "mapFile": "${workspaceFolder}/app.map",
+            "adapter": "",
+            "stopOnEntry": true
+          }
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "delphi-debug.delphiDebug",

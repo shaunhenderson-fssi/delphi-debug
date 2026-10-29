@@ -7,7 +7,24 @@ including source navigation, executable address translation, symbol resolution,
 breakpoints, and call-stack display.
 
 The extension currently supports MAP-file analysis and address/source
-navigation. It does not yet launch or debug an executable.
+navigation, and provides the VS Code launch configuration needed by a native
+Debug Adapter. It does not yet include an adapter capable of controlling a
+Windows Delphi process.
+
+## Native debugging architecture
+
+Full breakpoint and stepping support requires two cooperating pieces:
+
+1. This extension resolves Delphi source locations to MAP-file addresses and
+   publishes a launch configuration of type `delphi`.
+2. A native Debug Adapter Protocol server controls the Windows process
+   (WinDbg/CDB, another debugger, or a custom bridge), translates line
+   addresses to runtime breakpoints, and implements stepping and stack/variable
+   requests.
+
+The MAP file alone does not contain all the state required to control a live
+Delphi process. A native debugger also needs the executable's module load base,
+image sections, thread context, symbols, and OS-level breakpoint support.
 
 ## Using Delphi Debug with RAD Studio
 
