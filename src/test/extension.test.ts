@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { DelphiMapParser } from '../mapParser';
+import { parseRuntimeAddress } from '../extension';
 
 suite('Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
@@ -14,6 +15,14 @@ suite('Extension Test Suite', () => {
 	test('Sample test', () => {
 		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
 		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
+	});
+
+	test('parseRuntimeAddress accepts Delphi address formats', () => {
+		assert.strictEqual(parseRuntimeAddress('00FD72AC'), 0x00FD72AC);
+		assert.strictEqual(parseRuntimeAddress('0001:00FD72AC'), 0x00FD72AC);
+		assert.strictEqual(parseRuntimeAddress('0x00FD72AC'), 0x00FD72AC);
+		assert.strictEqual(parseRuntimeAddress('invalid'), undefined);
+		assert.strictEqual(parseRuntimeAddress('junk:00FD72AC'), undefined);
 	});
 
 	test('findNearestAddress returns the mapped line', async () => {

@@ -4,6 +4,10 @@ This is the README for your extension "delphi-debug". After writing up a brief d
 
 ## Features
 
+- Go to a Delphi runtime address with **Delphi Debug: Go To Runtime Address**.
+  Enter an address such as `00FD72AC`; the extension resolves it through the selected
+  MAP file, opens the nearest source line, and shows the containing symbol.
+
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
 For example if there is an image subfolder under your extension project workspace:

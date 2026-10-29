@@ -1,5 +1,16 @@
 import * as vscode from 'vscode';
 import { DelphiMapParser } from './mapParser';
+import * as path from "path";
+
+export function parseRuntimeAddress(input: string): number | undefined {
+	const match = /^(?:[0-9A-F]{4}:)?(?:0x)?([0-9A-F]{1,8})$/i.exec(input.trim());
+	if (!match) {
+		return undefined;
+	}
+
+	const address = parseInt(match[1], 16);
+	return address <= 0xFFFFFFFF ? address : undefined;
+}
 
 export function activate(context: vscode.ExtensionContext) {
 	const output = vscode.window.createOutputChannel("Delphi Debug");
@@ -124,9 +135,12 @@ export function activate(context: vscode.ExtensionContext) {
 						return;
 					}
 
+					/*
 					const fileName = editor.document.uri.fsPath
 						.split(/[\\/]/)
 						.pop() ?? '';
+					*/
+					const fileName = path.basename(editor.document.uri.fsPath);
 					const line = editor.selection.active.line + 1;
 
 					output.appendLine(`Active path: ${editor.document.uri.fsPath}`);
@@ -181,9 +195,12 @@ export function activate(context: vscode.ExtensionContext) {
 						return;
 					}
 
+					/*
 					const fileName = editor.document.uri.fsPath
 						.split(/[\\/]/)
 						.pop() ?? '';
+					*/
+					const fileName = path.basename(editor.document.uri.fsPath);
 					const line = editor.selection.active.line + 1;
 					const sourceLine = editor.document.lineAt(line - 1).text;
 
@@ -221,7 +238,71 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		);
 
-	context.subscriptions.push(delphiDebug, currentLineInfo, selectMap);
+	const goToRuntimeAddress =
+		vscode.commands.registerCommand(
+			'delphi-debug.goToRuntimeAddress',
+			async () => {
+				try {
+					const addressInput = await vscode.window.showInputBox({
+						prompt: 'Enter a Delphi runtime address',
+						placeHolder: '00FD72AC',
+						validateInput: value => parseRuntimeAddress(value) === undefined
+							? 'Enter a hexadecimal address, optionally prefixed by 0x or a segment'
+							: undefined
+					});
+					if (addressInput === undefined) {
+						return;
+					}
+
+					const address = parseRuntimeAddress(addressInput);
+					if (address === undefined) {
+						vscode.window.showErrorMessage('Invalid runtime address');
+						return;
+					}
+
+					const parser = await getParser();
+					const lineMapping = parser.findLineByAddress(address);
+					if (!lineMapping) {
+						const message = `No source mapping found for 0x${address.toString(16).toUpperCase().padStart(8, '0')}`;
+						output.appendLine(message);
+						vscode.window.showErrorMessage(message);
+						return;
+					}
+
+					const symbol = parser.findSymbolByAddress(address)?.symbol ?? '<unknown symbol>';
+					output.appendLine(`${lineMapping.file}:${lineMapping.line}`);
+					output.appendLine(symbol);
+
+					const pascalFiles = await vscode.workspace.findFiles('**/*.pas');
+					const matchingFile = pascalFiles.find(file =>
+						path.basename(file.fsPath).toLowerCase() === lineMapping.file.toLowerCase()
+					);
+
+					if (!matchingFile) {
+						const message = `${lineMapping.file}:${lineMapping.line}\n${symbol}`;
+						vscode.window.showWarningMessage(`${message}\nSource file was not found in the workspace`);
+						return;
+					}
+
+					const document = await vscode.workspace.openTextDocument(matchingFile);
+					const editor = await vscode.window.showTextDocument(document);
+					const sourceLine = Math.min(Math.max(lineMapping.line - 1, 0), document.lineCount - 1);
+					editor.selection = new vscode.Selection(sourceLine, 0, sourceLine, 0);
+					editor.revealRange(
+						new vscode.Range(sourceLine, 0, sourceLine, 0),
+						vscode.TextEditorRevealType.InCenter
+					);
+
+					vscode.window.showInformationMessage(`${lineMapping.file}:${lineMapping.line}\n${symbol}`);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					output.appendLine(`delphi-debug.goToRuntimeAddress failed: ${message}`);
+					vscode.window.showErrorMessage(`Delphi Debug failed: ${message}`);
+				}
+			}
+		);
+
+	context.subscriptions.push(delphiDebug, currentLineInfo, goToRuntimeAddress, selectMap);
 }
 
 export function deactivate() { }

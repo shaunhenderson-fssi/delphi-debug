@@ -24,6 +24,10 @@
       {
         "command": "delphi-debug.selectMapFile",
         "title": "Delphi Debug: Select MAP file"
+      },
+      {
+        "command": "delphi-debug.goToRuntimeAddress",
+        "title": "Delphi Debug: Go To Runtime Address"
       }
     ]
   },
