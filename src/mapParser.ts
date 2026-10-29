@@ -16,6 +16,8 @@ export interface NearestAddressMapping {
 export interface SymbolMapping {
 	address: number;
 	symbol: string;
+	startAddress: number;
+	endAddress: number;
 }
 
 export class DelphiMapParser {
@@ -234,10 +236,10 @@ export class DelphiMapParser {
 
 	public findSymbolByAddress(
 		address: number
-	): string | undefined {
-		const exactSymbol = this.symbolLookup.get(address);
-		if (exactSymbol !== undefined) {
-		    return exactSymbol;
+	): SymbolMapping | undefined {
+		if (this.symbolLookup.has(address)) {
+			const symbolIndex = this.sortedSymbolAddresses.indexOf(address);
+			return this.createSymbolMapping(symbolIndex);
 		}
 
 		let low = 0;
@@ -256,8 +258,23 @@ export class DelphiMapParser {
 		    }
 		}
 
-		return nearestAddress === undefined
-		    ? undefined
-		    : this.symbolLookup.get(nearestAddress);
+		if (nearestAddress === undefined) {
+			return undefined;
+		}
+
+		const symbolIndex = this.sortedSymbolAddresses.indexOf(nearestAddress);
+		return this.createSymbolMapping(symbolIndex);
+	}
+
+	private createSymbolMapping(symbolIndex: number): SymbolMapping {
+		const startAddress = this.sortedSymbolAddresses[symbolIndex];
+		const nextAddress = this.sortedSymbolAddresses[symbolIndex + 1];
+
+		return {
+			address: startAddress,
+			symbol: this.symbolLookup.get(startAddress)!,
+			startAddress,
+			endAddress: nextAddress === undefined ? 0xFFFFFFFF : nextAddress - 1
+		};
 	}
 }

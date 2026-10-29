@@ -73,4 +73,38 @@ suite('Extension Test Suite', () => {
 			fs.unlinkSync(mapFile);
 		}
 	});
+
+	test('findSymbolByAddress returns the symbol range', async () => {
+		const mapFile = path.join(os.tmpdir(), `delphi-debug-${process.pid}-symbols.map`);
+		fs.writeFileSync(mapFile, [
+			' 0001:00FD72AC Unit1.First',
+			' 0001:00FD72B4 Unit1.Second'
+		].join('\n'));
+
+		try {
+			const parser = new DelphiMapParser();
+			await parser.load(mapFile);
+
+			assert.deepStrictEqual(
+				parser.findSymbolByAddress(0x00FD72AE),
+				{
+					address: 0x00FD72AC,
+					symbol: 'Unit1.First',
+					startAddress: 0x00FD72AC,
+					endAddress: 0x00FD72B3
+				}
+			);
+			assert.deepStrictEqual(
+				parser.findSymbolByAddress(0x00FD72B4),
+				{
+					address: 0x00FD72B4,
+					symbol: 'Unit1.Second',
+					startAddress: 0x00FD72B4,
+					endAddress: 0xFFFFFFFF
+				}
+			);
+		} finally {
+			fs.unlinkSync(mapFile);
+		}
+	});
 });

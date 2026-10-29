@@ -153,7 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 					const symbol =
 						parser.findSymbolByAddress(address);
-					const message = `0x${address.toString(16)} => ${symbol}`;
+					const message = `0x${address.toString(16)} => ${symbol?.symbol ?? '<unknown symbol>'}`;
 
 					output.appendLine(message);
 					vscode.window.showInformationMessage(message);
@@ -208,7 +208,8 @@ export function activate(context: vscode.ExtensionContext) {
 					const symbol =
 						parser.findSymbolByAddress(address) ?? '<unknown symbol>';
 					const rva = `0x${address.toString(16).toUpperCase().padStart(8, '0')}`;
-					const message = `${sourceLine}\nRVA: ${rva}\nSymbol: ${symbol}`;
+					const symbolName = typeof symbol === 'string' ? symbol : symbol.symbol;
+					const message = `${sourceLine}\nRVA: ${rva}\nSymbol: ${symbolName}`;
 
 					output.appendLine(message);
 					vscode.window.showInformationMessage(message);
