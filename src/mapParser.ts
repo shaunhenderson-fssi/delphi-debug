@@ -238,7 +238,7 @@ export class DelphiMapParser {
 		address: number
 	): SymbolMapping | undefined {
 		if (this.symbolLookup.has(address)) {
-			const symbolIndex = this.sortedSymbolAddresses.indexOf(address);
+			const symbolIndex = this.sortedSymbolAddresses.indexOf(address); //TODO: indexOf is O(n), so maintain a map instead
 			return this.createSymbolMapping(symbolIndex);
 		}
 

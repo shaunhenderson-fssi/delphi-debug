@@ -125,7 +125,7 @@ export function activate(context: vscode.ExtensionContext) {
 					{
 						"type": "delphi",
 						"request": "launch",
-						"name": "Debug Delphi executable",
+						"name": "Debug Delphi program",
 						"program": "C:\\apps\\inca\\bin\\p1.exe",
 						"mapFile": "C:\\apps\\inca\\bin\\p1.map",
 						"adapter": "C:/path/to/delphi-debug-adapter.exe",
