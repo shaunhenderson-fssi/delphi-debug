@@ -28,6 +28,7 @@ export class DelphiMapParser {
 	private sortedLineAddresses: number[] = [];
 	private symbolLookup = new Map<number, string>();
 	private sortedSymbolAddresses: number[] = [];
+	private symbolAddressIndexes = new Map<number, number>();
 
 	async load(filename: string): Promise<void> {
 		this.sourceLookup.clear();
@@ -36,6 +37,7 @@ export class DelphiMapParser {
 		this.sortedLineAddresses = [];
 		this.symbolLookup.clear();
 		this.sortedSymbolAddresses = [];
+		this.symbolAddressIndexes.clear();
 
 		const stream = fs.createReadStream(filename);
 
@@ -87,6 +89,9 @@ export class DelphiMapParser {
 
 		this.sortedSymbolAddresses = Array.from(this.symbolLookup.keys())
 			.sort((left, right) => left - right);
+		this.symbolAddressIndexes = new Map(
+			this.sortedSymbolAddresses.map((address, index) => [address, index])
+		);
 		this.sortedLineAddresses = Array.from(this.lineLookup.keys())
 			.sort((left, right) => left - right);
 
@@ -237,33 +242,31 @@ export class DelphiMapParser {
 	public findSymbolByAddress(
 		address: number
 	): SymbolMapping | undefined {
-		if (this.symbolLookup.has(address)) {
-			const symbolIndex = this.sortedSymbolAddresses.indexOf(address); //TODO: indexOf is O(n), so maintain a map instead
-			return this.createSymbolMapping(symbolIndex);
+		const exactIndex = this.symbolAddressIndexes.get(address);
+		if (exactIndex !== undefined) {
+			return this.createSymbolMapping(exactIndex);
 		}
 
 		let low = 0;
 		let high = this.sortedSymbolAddresses.length - 1;
-		let nearestAddress: number | undefined;
+		let nearestIndex = -1;
 
 		while (low <= high) {
 		    const middle = Math.floor((low + high) / 2);
 		    const symbolAddress = this.sortedSymbolAddresses[middle];
 
 		    if (symbolAddress <= address) {
-		        nearestAddress = symbolAddress;
+		        nearestIndex = middle;
 		        low = middle + 1;
 		    } else {
 		        high = middle - 1;
 		    }
 		}
 
-		if (nearestAddress === undefined) {
+		if (nearestIndex === -1) {
 			return undefined;
 		}
-
-		const symbolIndex = this.sortedSymbolAddresses.indexOf(nearestAddress);
-		return this.createSymbolMapping(symbolIndex);
+		return this.createSymbolMapping(nearestIndex);
 	}
 
 	private createSymbolMapping(symbolIndex: number): SymbolMapping {
